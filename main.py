@@ -41,7 +41,7 @@ def get_arbitrage_details(outcomes):
 
 
 try:
-    url = 'https://api.the-odds-api.com/v4/sports/upcoming/odds/?apiKey=b321ed344417a4cf3c5b17e388167ef6&regions=us,us2,uk,au,eu'
+    url = f'https://api.the-odds-api.com/v4/sports/upcoming/odds/?apiKey={API_KEY}&regions=us,us2,uk,au,eu'
     response = requests.get(url)
 
     if response.status_code != 200:
