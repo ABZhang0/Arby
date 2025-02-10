@@ -1,57 +1,57 @@
-import os
-from dotenv import load_dotenv
-import requests
+from search import search
+from nicegui import ui
+from datetime import datetime, timezone
 
 
-load_dotenv()
-API_KEY = os.getenv('API_KEY')
+def format_timestamp(timestamp):
+    return datetime.fromisoformat(timestamp).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%m/%d/%Y %H:%M')
+
+results = []
+
+@ui.refreshable
+def results_ui():
+    for result in results:
+        with ui.card():
+            bet_size = {'value': 100}
+
+            with ui.row():
+                ui.label(result['sport_title'])
+                ui.label(format(1-result['arbitrage_details']['total'], '.3%'))
+            ui.label(format_timestamp(result['commence_time']))
+            ui.slider(min=0, max=1000).bind_value(bet_size)
+            ui.number().bind_value(bet_size)
+
+            with ui.row():
+                for outcome in result['optimal_outcomes']:
+                    with ui.card():
+                        ui.label(outcome['name'])
+                        ui.label(outcome['price'])
+
+                        with ui.row():
+                            ui.label(outcome['bookmaker'])
+                            ui.label(format_timestamp(outcome['last_update']))
+
+                        with ui.card():
+                            ui.label().bind_text_from(
+                                bet_size,
+                                'value',
+                                backward=lambda v, r=result, o=outcome: f'Bet Amount: ${(v * r["arbitrage_details"][o["name"]]):.2f}'
+                            )
+                            ui.label().bind_text_from(
+                                bet_size,
+                                'value',
+                                backward=lambda v, r=result, o=outcome: f'Profit: ${(v * r["arbitrage_details"][o["name"]] - v):.2f}'
+                            )
 
 
-def calculate_matchup(matchup):
-    optimal_outcomes = get_optimal_outcomes(matchup)
-    arbitrage_details = get_arbitrage_details(optimal_outcomes)
-
-    return {
-        'sport_title': matchup['sport_title'],
-        'commence_time': matchup['commence_time'],
-        'optimal_outcomes': optimal_outcomes,
-        'arbitrage_details': arbitrage_details
-    }
+def get_results():
+    results.clear()
+    results.extend(search())
+    results_ui.refresh()
 
 
-def get_optimal_outcomes(matchup):
-    optimal_outcomes = {}
-    for bookmaker in matchup['bookmakers']:
-        # TODO: handle other markets (e.g. spreads)
-        h2h_market = next(m for m in bookmaker['markets'] if m['key'] == 'h2h')
-        for outcome in h2h_market['outcomes']:
-            if not outcome['name'] in optimal_outcomes or outcome['price'] > optimal_outcomes[outcome['name']]['price']:
-                outcome['bookmaker'] = bookmaker['key']
-                outcome['last_update'] = h2h_market['last_update']
-                optimal_outcomes[outcome['name']] = outcome
-    return list(optimal_outcomes.values())
+ui.label('Arby')
+ui.button('Search', on_click=lambda: get_results())
+results_ui()
 
-
-def get_arbitrage_details(outcomes):
-    arbitrage_details = {}
-    for outcome in outcomes:
-        arbitrage_details[outcome['name']] = 1/outcome['price']
-    arbitrage_details['total'] = sum(arbitrage_details.values())
-    return arbitrage_details
-
-
-try:
-    url = f'https://api.the-odds-api.com/v4/sports/upcoming/odds/?apiKey={API_KEY}&regions=us,us2,uk,au,eu'
-    response = requests.get(url)
-
-    if response.status_code != 200:
-        raise Exception(f'Error: {response.status_code}')
-    data = response.json()
-
-    results = [calculate_matchup(matchup) for matchup in data]
-    arbitrage_opportunities = list(filter(lambda x: x['arbitrage_details']['total'] < 1, results))
-
-    import json
-    print(json.dumps(arbitrage_opportunities, indent=4))
-except Exception as e:
-    print(repr(e))
+ui.run()
