@@ -64,12 +64,14 @@ class ArbitrageEngine:
             raise Exception(f'Error: {response.status_code}')
         data = response.json()
         
-        # Overwrite example_data.json with the raw API response
-        '''
-        import json
-        with open('example_data.json', 'w') as f:
-            json.dump(data, f, indent=2)
-        '''
+        # Overwrite sample_data.json with the raw API response
+        # with open('sample_data.json', 'w') as f:
+        #     json.dump(data, f, indent=2)
+
+        # Load sample_data.json
+        # import json
+        # with open('sample_data.json', 'r') as f:
+        #     data = json.load(f)
 
         betting_matchups = [matchup for matchup in data if matchup.get('bookmakers')]
         results = [self._calculate_matchup(matchup) for matchup in betting_matchups]

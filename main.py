@@ -1,6 +1,6 @@
 from engine import ArbitrageEngine
 from nicegui import ui
-from utils import format_timestamp
+from utils import format_timestamp, is_past_timestamp
 
 engine = ArbitrageEngine()
 
@@ -21,10 +21,16 @@ def results_ui():
                 with ui.row().classes('w-full justify-between items-start px-2'):
                     with ui.column():
                         ui.label(result['sport_title']).classes('font-medium text-lg')
-                        ui.label(format_timestamp(result['commence_time'])).classes('text-sm text-gray-400')
-                    ui.label(format(result['arbitrage_details']['roi'], '.3%')).classes('text-red-500 text-2xl font-bold')
+                        with ui.row().classes('items-center gap-2'):
+                            ui.label(format_timestamp(result['commence_time'])).classes(
+                                'text-sm text-gray-300 ' + 
+                                ('animate-pulse text-red-500' if is_past_timestamp(result['commence_time']) else '')
+                            )
+                            if is_past_timestamp(result['commence_time']):
+                                ui.label('LIVE').classes('text-xs bg-red-500 text-white px-1.5 py-0.5 rounded animate-pulse')
+                    ui.label(format(result['arbitrage_details']['roi'], '.3%')).classes('text-emerald-500 text-2xl font-bold')
                 ui.slider(min=0, max=1000).bind_value(bet_size).classes('w-full')
-                ui.number().bind_value(bet_size)
+                ui.number(label='Bet Size', prefix='$', min=0, max=1000).bind_value(bet_size)
 
                 with ui.row().classes('w-full gap-2'):
                     for outcome in result['optimal_outcomes']:
