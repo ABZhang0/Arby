@@ -1,12 +1,15 @@
-from search import search
+from engine import ArbitrageEngine
 from nicegui import ui
-from datetime import datetime, timezone
+from utils import format_timestamp
 
-
-def format_timestamp(timestamp):
-    return datetime.fromisoformat(timestamp).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%m/%d/%Y %H:%M')
+engine = ArbitrageEngine()
 
 results = []
+
+def get_results(market, region):
+    results.clear()
+    results.extend(engine.search(market, region))
+    results_ui.refresh()
 
 @ui.refreshable
 def results_ui():
@@ -16,7 +19,7 @@ def results_ui():
 
             with ui.row():
                 ui.label(result['sport_title'])
-                ui.label(format(1-result['arbitrage_details']['total'], '.3%'))
+                ui.label(format(result['arbitrage_details']['roi'], '.3%'))
             ui.label(format_timestamp(result['commence_time']))
             ui.slider(min=0, max=1000).bind_value(bet_size)
             ui.number().bind_value(bet_size)
@@ -32,26 +35,51 @@ def results_ui():
                             ui.label(format_timestamp(outcome['last_update']))
 
                         with ui.card():
+                            def get_stake(v, r, o):
+                                return v * r["arbitrage_details"][o["name"]]/r["arbitrage_details"]["total"]
+
                             ui.label().bind_text_from(
                                 bet_size,
                                 'value',
-                                backward=lambda v, r=result, o=outcome: f'Bet Amount: ${(v * r["arbitrage_details"][o["name"]]):.2f}'
+                                backward=lambda v, r=result, o=outcome: f'Stake: ${(get_stake(v, r, o)):.2f}'
                             )
                             ui.label().bind_text_from(
                                 bet_size,
                                 'value',
-                                backward=lambda v, r=result, o=outcome: f'Profit: ${(v * r["arbitrage_details"][o["name"]] - v):.2f}'
+                                backward=lambda v, r=result, o=outcome: f'Payout: ${(get_stake(v, r, o) * o["price"]):.2f}'
+                            )
+                            ui.label().bind_text_from(
+                                bet_size,
+                                'value',
+                                backward=lambda v, r=result, o=outcome: f'Profit: ${(get_stake(v, r, o) * o["price"] - v):.2f}'
                             )
 
+ui.query('body').classes('bg-emerald-900')
 
-def get_results():
-    results.clear()
-    results.extend(search())
-    results_ui.refresh()
+with ui.header().classes('w-full flex justify-between items-center p-0 bg-emerald-800 shadow-lg shadow-black/50'):
+    # Left side - logo
+    with ui.element('div').classes('flex items-start gap-2 h-full mt-1 ml-1'):
+        with open('assets/logo.svg', 'r') as f:
+            svg_content = f.read()
+        ui.html(svg_content)
+    
+    # Right side - controls
+    with ui.element('div').classes('flex items-center gap-8 mr-12'):
+        market_dropdown = ui.select(
+            list(engine.markets.keys()), 
+            label='Market', 
+            value=engine.default_market
+        ).classes('text-xl w-48')
+        region_dropdown = ui.select(
+            list(engine.regions.keys()), 
+            label='Location', 
+            value=engine.default_region
+        ).classes('text-xl w-48')
+        ui.button(
+            'Search', 
+            on_click=lambda: get_results(market=market_dropdown.value, region=region_dropdown.value)
+        ).classes('text-xl font-bold px-8 py-2 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200')
 
-
-ui.label('Arby')
-ui.button('Search', on_click=lambda: get_results())
 results_ui()
 
 ui.run()
