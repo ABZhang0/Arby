@@ -13,46 +13,48 @@ def get_results(market, region):
 
 @ui.refreshable
 def results_ui():
-    for result in results:
-        with ui.card():
-            bet_size = {'value': 100}
+    with ui.grid().classes('grid-cols-3 gap-4 w-full p-4'):
+        for result in results:
+            with ui.card().classes('w-full'):
+                bet_size = {'value': 100}
 
-            with ui.row():
-                ui.label(result['sport_title'])
-                ui.label(format(result['arbitrage_details']['roi'], '.3%'))
-            ui.label(format_timestamp(result['commence_time']))
-            ui.slider(min=0, max=1000).bind_value(bet_size)
-            ui.number().bind_value(bet_size)
+                with ui.row().classes('w-full justify-between items-start px-2'):
+                    with ui.column():
+                        ui.label(result['sport_title']).classes('font-medium text-lg')
+                        ui.label(format_timestamp(result['commence_time'])).classes('text-sm text-gray-400')
+                    ui.label(format(result['arbitrage_details']['roi'], '.3%')).classes('text-red-500 text-2xl font-bold')
+                ui.slider(min=0, max=1000).bind_value(bet_size).classes('w-full')
+                ui.number().bind_value(bet_size)
 
-            with ui.row():
-                for outcome in result['optimal_outcomes']:
-                    with ui.card():
-                        ui.label(outcome['name'])
-                        ui.label(outcome['price'])
+                with ui.row().classes('w-full gap-2'):
+                    for outcome in result['optimal_outcomes']:
+                        with ui.card().classes('flex-1'):
+                            ui.label(outcome['name']).classes('text-center w-full')
+                            ui.label(outcome['price']).classes('text-center w-full')
 
-                        with ui.row():
-                            ui.label(outcome['bookmaker'])
-                            ui.label(format_timestamp(outcome['last_update']))
+                            with ui.row().classes('w-full justify-between'):
+                                ui.label(outcome['bookmaker'])
+                                ui.label(format_timestamp(outcome['last_update']))
 
-                        with ui.card():
-                            def get_stake(v, r, o):
-                                return v * r["arbitrage_details"][o["name"]]/r["arbitrage_details"]["total"]
+                            with ui.card().classes('w-full'):
+                                def get_stake(v, r, o):
+                                    return v * r["arbitrage_details"][o["name"]]/r["arbitrage_details"]["total"]
 
-                            ui.label().bind_text_from(
-                                bet_size,
-                                'value',
-                                backward=lambda v, r=result, o=outcome: f'Stake: ${(get_stake(v, r, o)):.2f}'
-                            )
-                            ui.label().bind_text_from(
-                                bet_size,
-                                'value',
-                                backward=lambda v, r=result, o=outcome: f'Payout: ${(get_stake(v, r, o) * o["price"]):.2f}'
-                            )
-                            ui.label().bind_text_from(
-                                bet_size,
-                                'value',
-                                backward=lambda v, r=result, o=outcome: f'Profit: ${(get_stake(v, r, o) * o["price"] - v):.2f}'
-                            )
+                                ui.label().bind_text_from(
+                                    bet_size,
+                                    'value',
+                                    backward=lambda v, r=result, o=outcome: f'Stake: ${(get_stake(v, r, o)):.2f}'
+                                )
+                                ui.label().bind_text_from(
+                                    bet_size,
+                                    'value',
+                                    backward=lambda v, r=result, o=outcome: f'Payout: ${(get_stake(v, r, o) * o["price"]):.2f}'
+                                )
+                                ui.label().bind_text_from(
+                                    bet_size,
+                                    'value',
+                                    backward=lambda v, r=result, o=outcome: f'Profit: ${(get_stake(v, r, o) * o["price"] - v):.2f}'
+                                )
 
 ui.query('body').classes('bg-emerald-900')
 
