@@ -44,6 +44,7 @@ class ArbitrageEngine:
                 for outcome in market['outcomes']:
                     if not outcome['name'] in optimal_outcomes or outcome['price'] > optimal_outcomes[outcome['name']]['price']:
                         outcome['bookmaker'] = bookmaker['title']
+                        outcome['link'] = bookmaker['link']
                         outcome['last_update'] = market['last_update']
                         optimal_outcomes[outcome['name']] = outcome
         return list(optimal_outcomes.values())
@@ -57,7 +58,7 @@ class ArbitrageEngine:
         return arbitrage_details
 
     def search(self, market, region):
-        url = f'{self.base_url}/?apiKey={self.api_key}&regions={self.regions[region]}&markets={self.markets[market]}'
+        url = f'{self.base_url}/?apiKey={self.api_key}&regions={self.regions[region]}&markets={self.markets[market]}&includeLinks=true&includeBetLimits=true'
         response = requests.get(url)
 
         if response.status_code != 200:
@@ -65,12 +66,13 @@ class ArbitrageEngine:
         data = response.json()
         
         # Overwrite sample_data.json with the raw API response
-        # with open('sample_data.json', 'w') as f:
+        # import json
+        # with open('data/sample_h2h.json', 'w') as f:
         #     json.dump(data, f, indent=2)
 
         # Load sample_data.json
         # import json
-        # with open('sample_data.json', 'r') as f:
+        # with open('data/sample_h2h.json', 'r') as f:
         #     data = json.load(f)
 
         betting_matchups = [matchup for matchup in data if matchup.get('bookmakers')]

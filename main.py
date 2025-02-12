@@ -15,54 +15,83 @@ def get_results(market, region):
 def results_ui():
     with ui.grid().classes('grid-cols-3 gap-4 w-full p-4'):
         for result in results:
+            is_live = is_past_timestamp(result['commence_time'])
             with ui.card().classes('w-full'):
                 bet_size = {'value': 100}
 
-                with ui.row().classes('w-full justify-between items-start px-2'):
-                    with ui.column():
-                        ui.label(result['sport_title']).classes('font-medium text-lg')
+                with ui.row().classes('w-full justify-between items-start'):
+                    with ui.column().classes('gap-0 mt-1 ml-2'):
+                        ui.label(result['sport_title']).classes('font-medium text-2xl')
                         with ui.row().classes('items-center gap-2'):
                             ui.label(format_timestamp(result['commence_time'])).classes(
-                                'text-sm text-gray-300 ' + 
-                                ('animate-pulse text-red-500' if is_past_timestamp(result['commence_time']) else '')
+                                'text-base text-gray-400 ' + 
+                                ('animate-pulse text-red-500' if is_live else '')
                             )
-                            if is_past_timestamp(result['commence_time']):
-                                ui.label('LIVE').classes('text-xs bg-red-500 text-white px-1.5 py-0.5 rounded animate-pulse')
-                    ui.label(format(result['arbitrage_details']['roi'], '.3%')).classes('text-emerald-500 text-2xl font-bold')
-                ui.slider(min=0, max=1000).bind_value(bet_size).classes('w-full')
-                ui.number(label='Bet Size', prefix='$', min=0, max=1000).bind_value(bet_size)
+                            if is_live:
+                                ui.label('LIVE').classes('text-sm bg-red-500 text-white px-1.5 py-0.5 rounded animate-pulse')
+                    ui.label(format(result['arbitrage_details']['roi'], '.3%')).classes('number-font text-emerald-500 text-3xl font-medium bg-emerald-500/10 px-3 py-1 rounded-lg shadow-sm')
+
+                ui.number(label='Bet Size', prefix='$', min=0, max=1000).bind_value(bet_size).classes('mx-auto text-lg number-font')
+                ui.slider(min=0, max=1000).bind_value(bet_size).classes('mx-auto w-4/5 mb-4')
 
                 with ui.row().classes('w-full gap-2'):
                     for outcome in result['optimal_outcomes']:
                         with ui.card().classes('flex-1'):
-                            ui.label(outcome['name']).classes('text-center w-full')
-                            ui.label(outcome['price']).classes('text-center w-full')
+                            ui.label(outcome['name']).classes('text-center w-full font-medium text-lg mb-1')
+                            ui.label(outcome['price']).classes('number-font text-center w-full text-2xl font-medium text-amber-400 mb-2')
 
-                            with ui.row().classes('w-full justify-between'):
-                                ui.label(outcome['bookmaker'])
-                                ui.label(format_timestamp(outcome['last_update']))
+                            with ui.row().classes('w-full justify-between items-center px-2 py-1 bg-white/5'):
+                                ui.link(outcome['bookmaker'], outcome['link']).classes('text-sm font-medium hover:text-amber-400 transition-colors')
+                                ui.label(format_timestamp(outcome['last_update'])).classes('text-xs text-gray-400')
 
                             with ui.card().classes('w-full'):
                                 def get_stake(v, r, o):
                                     return v * r["arbitrage_details"][o["name"]]/r["arbitrage_details"]["total"]
 
-                                ui.label().bind_text_from(
-                                    bet_size,
-                                    'value',
-                                    backward=lambda v, r=result, o=outcome: f'Stake: ${(get_stake(v, r, o)):.2f}'
-                                )
-                                ui.label().bind_text_from(
-                                    bet_size,
-                                    'value',
-                                    backward=lambda v, r=result, o=outcome: f'Payout: ${(get_stake(v, r, o) * o["price"]):.2f}'
-                                )
-                                ui.label().bind_text_from(
-                                    bet_size,
-                                    'value',
-                                    backward=lambda v, r=result, o=outcome: f'Profit: ${(get_stake(v, r, o) * o["price"] - v):.2f}'
-                                )
+                                with ui.timeline(side='right', color='green-800').classes('ml-2'):
+                                    with ui.timeline_entry(subtitle='Stake', icon='attach_money').classes('-mb-5'):
+                                        ui.label().bind_text_from(
+                                            bet_size,
+                                            'value',
+                                            backward=lambda v, r=result, o=outcome: f'${(get_stake(v, r, o)):.2f}'
+                                        ).classes('number-font font-medium -mt-5 text-right w-full -ml-4')
+                                    
+                                    with ui.timeline_entry(subtitle='Payout', icon='savings').classes('-mb-5'):
+                                        ui.label().bind_text_from(
+                                            bet_size,
+                                            'value',
+                                            backward=lambda v, r=result, o=outcome: f'${(get_stake(v, r, o) * o["price"]):.2f}'
+                                        ).classes('number-font font-medium -mt-5 text-right w-full -ml-4')
+                                    
+                                    with ui.timeline_entry(subtitle='Profit', icon='trending_up').classes('-mb-5'):
+                                        ui.label().bind_text_from(
+                                            bet_size,
+                                            'value',
+                                            backward=lambda v, r=result, o=outcome: f'${(get_stake(v, r, o) * o["price"] - v):.2f}'
+                                        ).classes('number-font font-medium -mt-5 text-right w-full -ml-4 text-lg text-emerald-500')
 
+ui.colors(primary='#000000')
 ui.query('body').classes('bg-emerald-900')
+
+# Add Google Fonts links to the head
+ui.add_head_html('''
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+''')
+
+# Add custom CSS for fonts
+ui.add_head_html('''
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .number-font {
+            font-family: 'IBM Plex Mono', monospace;
+            letter-spacing: -0.02em;  /* Slightly tighter spacing for numbers */
+        }
+    </style>
+''')
 
 with ui.header().classes('w-full flex justify-between items-center p-0 bg-emerald-800 shadow-lg shadow-black/50'):
     # Left side - logo
@@ -90,4 +119,4 @@ with ui.header().classes('w-full flex justify-between items-center p-0 bg-emeral
 
 results_ui()
 
-ui.run()
+ui.run(title='Arby')
