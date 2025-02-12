@@ -15,10 +15,11 @@ def get_results(market, region):
 def results_ui():
     with ui.grid().classes('grid-cols-3 gap-4 w-full p-4'):
         for result in results:
-            is_live = is_past_timestamp(result['commence_time'])
             with ui.card().classes('w-full'):
                 bet_size = {'value': 100}
+                is_live = is_past_timestamp(result['commence_time'])
 
+                # Header
                 with ui.row().classes('w-full justify-between items-start'):
                     with ui.column().classes('gap-0 mt-1 ml-2'):
                         ui.label(result['sport_title']).classes('font-medium text-2xl')
@@ -31,19 +32,32 @@ def results_ui():
                                 ui.label('LIVE').classes('text-sm bg-red-500 text-white px-1.5 py-0.5 rounded animate-pulse')
                     ui.label(format(result['arbitrage_details']['roi'], '.3%')).classes('number-font text-emerald-500 text-3xl font-medium bg-emerald-500/10 px-3 py-1 rounded-lg shadow-sm')
 
+                # Bet size slider
                 ui.number(label='Bet Size', prefix='$', min=0, max=1000).bind_value(bet_size).classes('mx-auto text-lg number-font')
                 ui.slider(min=0, max=1000).bind_value(bet_size).classes('mx-auto w-4/5 mb-4')
 
+                # Outcomes
                 with ui.row().classes('w-full gap-2'):
                     for outcome in result['optimal_outcomes']:
                         with ui.card().classes('flex-1'):
+                            # Odds
                             ui.label(outcome['name']).classes('text-center w-full font-medium text-lg mb-1')
-                            ui.label(outcome['price']).classes('number-font text-center w-full text-2xl font-medium text-amber-400 mb-2')
+                            with ui.column().classes('w-full items-center gap-0'):
+                                ui.label(outcome['price']).classes('number-font text-3xl font-medium text-amber-400 text-center')
+                                ui.label(f'-{int(100 / (outcome["price"] - 1))}' if outcome["price"] < 2 else f'+{int((outcome["price"] - 1) * 100)}').classes('number-font text-sm text-gray-500 text-center')
 
+                            # Bookmaker info
                             with ui.row().classes('w-full justify-between items-center px-2 py-1 bg-white/5'):
-                                ui.link(outcome['bookmaker'], outcome['link']).classes('text-sm font-medium hover:text-amber-400 transition-colors')
+                                if outcome['link']:
+                                    with ui.link(target=outcome['link'], new_tab=True).classes('no-underline'):
+                                        with ui.row().classes('items-center gap-1'):
+                                            ui.label(outcome['bookmaker']).classes('text-sm font-medium hover:text-amber-400 transition-colors')
+                                            ui.icon('open_in_new', size='12px').classes('text-gray-400')
+                                else:
+                                    ui.label(outcome['bookmaker']).classes('text-sm font-medium')
                                 ui.label(format_timestamp(outcome['last_update'])).classes('text-xs text-gray-400')
 
+                            # Profit calculation
                             with ui.card().classes('w-full'):
                                 def get_stake(v, r, o):
                                     return v * r["arbitrage_details"][o["name"]]/r["arbitrage_details"]["total"]
